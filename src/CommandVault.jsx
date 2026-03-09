@@ -208,7 +208,7 @@ const CommandVault = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIndex, filteredCommands, showAddModal, showEditModal, showDeleteModal]);
+  }, [selectedIndex, filteredCommands, showAddModal, showEditModal, showDeleteModal, copyCommand]);
 
   return (
     <div
