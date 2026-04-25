@@ -162,29 +162,28 @@ async function checkInlineScripts(page, findings) {
 }
 
 async function run() {
-  process.stdout.write('Connecting to Chrome on port 9222...\n');
+  const url = process.argv[2];
 
-  let browser;
-  try {
-    browser = await chromium.connectOverCDP('http://localhost:9222');
-  } catch (e) {
-    console.error('\nCould not connect. Make sure Chrome is running with:\n  --remote-debugging-port=9222\n');
+  if (!url) {
+    console.error('Usage: node audit.js <url>');
+    console.error('Example: node audit.js https://www.microsoft.com');
     process.exit(1);
   }
 
-  const contexts = browser.contexts();
-  const pages = contexts.flatMap(c => c.pages());
+  process.stdout.write(`Loading ${url}...\n`);
 
-  if (pages.length === 0) {
-    console.error('No open tabs found.');
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+
+  let title = '';
+  try {
+    await page.goto(url, { waitUntil: 'networkidle' });
+    title = await page.title();
+  } catch (e) {
+    console.error(`Failed to load page: ${e.message}`);
     await browser.close();
     process.exit(1);
   }
-
-  // Use last page (most recently opened)
-  const page = pages[pages.length - 1];
-  const url = page.url();
-  const title = await page.title();
 
   console.log('\n' + '═'.repeat(62));
   console.log(' SITE AUDIT REPORT');
@@ -249,4 +248,7 @@ async function run() {
   await browser.close();
 }
 
-run().catch(e => { console.error(e.message); process.exit(1); });
+run().catch(e => {
+  console.error(`Error: ${e.message}`);
+  process.exit(1);
+});
