@@ -162,28 +162,36 @@ async function checkInlineScripts(page, findings) {
 }
 
 async function run() {
-  const url = process.argv[2];
+  process.stdout.write('Connecting to Chrome on port 9222...\n');
 
-  if (!url) {
-    console.error('Usage: node audit.js <url>');
-    console.error('Example: node audit.js https://www.microsoft.com');
+  let browser;
+  try {
+    browser = await chromium.connectOverCDP('http://localhost:9222');
+  } catch (e) {
+    console.error('\n❌ Could not connect to Chrome.\n');
+    console.error('Make sure Chrome is running with the flag:\n');
+    console.error('  Windows:');
+    console.error('    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222\n');
+    console.error('  Mac:');
+    console.error('    /Applications/Google\\ Chrome.app/Contents/MacOS/Google\\ Chrome --remote-debugging-port=9222\n');
+    console.error('  Linux:');
+    console.error('    google-chrome --remote-debugging-port=9222\n');
     process.exit(1);
   }
 
-  process.stdout.write(`Loading ${url}...\n`);
+  const contexts = browser.contexts();
+  const pages = contexts.flatMap(c => c.pages());
 
-  const browser = await chromium.launch();
-  const page = await browser.newPage();
-
-  let title = '';
-  try {
-    await page.goto(url, { waitUntil: 'networkidle' });
-    title = await page.title();
-  } catch (e) {
-    console.error(`Failed to load page: ${e.message}`);
+  if (pages.length === 0) {
+    console.error('❌ No open tabs found in Chrome.');
     await browser.close();
     process.exit(1);
   }
+
+  // Use the most recently opened/focused tab
+  const page = pages[pages.length - 1];
+  const url = page.url();
+  const title = await page.title();
 
   console.log('\n' + '═'.repeat(62));
   console.log(' SITE AUDIT REPORT');
